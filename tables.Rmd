@@ -1,0 +1,138 @@
+---
+title: "Tables"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(randomNames)
+library(ggplot2)
+library(kableExtra)
+library(dplyr)
+# library(tinytex)
+library(rmarkdown)
+library(tidyverse)
+library(generator)
+library(purrr)
+options(tinytex.verbose = TRUE)
+```
+
+## Description of First Set of Variables
+location - 5 locations (LA, SF, SD, Sac, Santa Cruz)
+location_id - 5 random numbers that represent the location id number
+number_of_chs - vector of the specific number of clubhouses per location
+clubhouse_id - 4 random numbers that represent the clubhouse id number
+
+### Specification of Variables Part 1
+```{r}
+set.seed(100)
+location = c('San Francisco','Los Angeles', 'San Diego','Sacramento','Santa Cruz')
+location_id = paste0("location_id_", sample(1000:9999,length(location),replace = F))
+number_of_chs = c(5,4,3,4,3)
+clubhouse_id = as.character(paste0("ch_id_", sample(100:999,sum(number_of_chs),replace = F)))
+```
+
+### For Loops for Locations and Location ID
+```{r}
+locations = vector()
+for(r in 1:5){
+ locations = c(locations, rep(location[r],number_of_chs[r]))
+}
+
+locations_id = vector()
+for(r in 1:5){
+ locations_id = c(locations_id, rep(location_id[r],number_of_chs[r]))
+}
+```
+
+## Description of First Set of Variables
+bgc_facilitator_name - a random name for each location 
+bgc_facilitator_email - a random email for random name
+bgc_facilitator_phone_number - a random 10 digit phone number for each random name
+
+### Specification of Variables Part 2
+```{r}
+bgc_facilitator_name <- randomNames(sum(number_of_chs))
+bgc_facilitator_phone_number = r_phone_numbers(sum(number_of_chs), use_hyphens = TRUE)
+bgc_facilitator_email <- paste0(str_replace(bgc_facilitator_name,', ',''), '@bgc.com')
+#Creation of Facilitator Data Frame
+fac_df = data.frame(locations,locations_id,clubhouse_id,
+                    bgc_facilitator_name,
+                    bgc_facilitator_email,
+                    bgc_facilitator_phone_number)
+```
+
+## Specifications for Student Data Frame
+```{r}
+num_clubs = nrow(fac_df)
+rep_grade = 3
+grades = c('K','1','2','3','4','5')
+num_students = num_clubs*rep_grade*length(grades)
+```
+
+## Grades and Clubhouse Data Frame
+```{r}
+grades_ch_df = expand.grid(grades,fac_df$clubhouse_id) %>%
+  slice(rep(1:n(), each = rep_grade)) %>%
+  rename(grade = Var1,
+         clubhouse_id = Var2)
+```
+
+### Description of Set Variables Part 3
+student_id - random id number that represents a specific student
+student_name - random name for each student 
+time_started - random number between 100 and 999 
+
+## Generate Students IDs and Names
+```{r}
+student_id = paste0("s_id_",sample(100:999,num_students,replace = F))
+student_name <- randomNames(num_students)
+time_started <- sample(100:999,num_students,replace = F)
+```
+
+## Create Students Data Frame
+```{r}
+student_df = data.frame(student_id,student_name,time_started) %>%
+  bind_cols(grades_ch_df)
+df = student_df %>%
+  left_join(fac_df,"clubhouse_id")
+```
+
+```{r}
+write.csv(fac_df,'facillitator_table.csv',row.names = FALSE)
+write.csv(student_df,'student_table.csv',row.names = FALSE)
+```
+
+
+## Creation of Answers Table
+```{r}
+## Variables Names
+grade = c('K','1st', '2nd','3rd','4th','5th')
+subjects = c('CA','G','MD','NS')
+weeks = c('Week 1','Week 2','Week 3','Week 4')
+questions = 1:10
+## Create all combinations for variables
+worksheet_df = expand.grid(grade,subjects,weeks,questions)
+
+## Change Variable Names in df
+colnames(worksheet_df) = c("grade","subjects","weeks", "questions")
+
+##Create Worksheet IDs
+worksheet_df = worksheet_df %>% 
+  mutate(worksheet_id = paste0("sheet_id_",sample(1000:9999,960,replace = F)),
+         solutions = sample(0:100,960,replace = TRUE))
+
+```
+
+
+## Creation of Response Table
+```{r}
+response_df = student_df  %>%
+  select(student_id, grade) %>%
+  left_join (select(worksheet_df,worksheet_id,questions,grade,weeks), by ="grade") %>% 
+  mutate(response = sample(0:100,54720,replace = TRUE))
+
+```
